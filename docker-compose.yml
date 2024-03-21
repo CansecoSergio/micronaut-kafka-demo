@@ -1,0 +1,63 @@
+# Commandos (para ejecutar en el directorio donde se encuentra docker-compose.yml)
+#
+# Iniciar los contenedores: docker-compose up [-d] [service-name]
+#     -d - inicia los contenedores en modo "detached"
+#     service-name - solo inicia el contenedor indicado, si no se pone nombre inicia todos los contenedores en el archivo
+# Cuando no encuentra la imagen en local, este comando la descarga
+#
+# Detener y eliminar los contenedores: docker-compose down
+#
+# Para iniciar solo los contenedores relacionados con un servicio, agregar la propiedad depends_on en dicho servicio
+# Posteriormente iniciar el servicio con: docker-compose up -d <servicio> esto levantará todos los servicios en
+# depends_on y finalmente <servicio>
+# Por ejemplo, si se define:
+#    services:
+#      servicio-1:
+#        ...
+#      servicio-2:
+#        ...
+#        depends_on:
+#          - servicio-1
+#      servicio-3:
+#        ...
+# Al ejecutar: "docker-compose up -d servicio-2"; inicia servicio-1 y luego servicio-2 pero no servicio-3
+
+services:
+  kafka-server:
+    image: bitnami/kafka:latest
+    container_name: kafka-server
+    hostname: kafka-server
+    ports:
+      - "9092:9092"
+    networks:
+      - oatde-network
+    volumes:
+      - "D:/devenv/docker/volumes/kafka:/bitnami/kafka"
+    environment:
+      # KRaft setting
+      - KAFKA_CFG_NODE_ID=0
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka-server:9093
+      # Listeners
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://kafka-server:9092,CONTROLLER://kafka-server:9093,CLIENTUI://kafka-server:9094
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092,CLIENTUI://kafka-server:9094
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,CLIENTUI:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui
+    container_name: kafka-ui
+    ports:
+      - "8090:8080"
+    networks:
+      - oatde-network
+    volumes:
+      - "D:/devenv/docker/volumes/kafkaui:/etc/kafkaui/"
+    environment:
+      - DYNAMIC_CONFIG_ENABLED=true
+    depends_on:
+      - kafka-server
+
+networks:
+  oatde-network:
+    driver: bridge
